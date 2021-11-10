@@ -1,0 +1,26 @@
+ImprovePath():
+while(at least one fvalue in Open is undominated by all gvalues in sols)
+    x = pop node with lexicographically smallest fvalue from Open
+    s = state associated with x
+    Move x from s.op to s.cl
+    if s == sgoal
+        Add x to sols
+        Remove all nodes whose fvalues (with epsilon = 1) are dominated by x from Open
+        Remove all nodes whose gvalues are dominated by x from sols
+    for each t in successors(s)
+        y = new state at node v
+        y.g = x.g + c(s, t)
+        if t.op or t.cl dominates y.g
+            continue
+        if sols dominates y.g + 1*h(t)
+            continue
+        y.f = y.g + epsilon*h(t)
+        Remove all nodes from t.op with g values dominated by y.g and remove corresponding nodes from Open
+        Remove all nodes from t.cl with g values dominated by y.g
+        
+        y.parent = x
+        Add y to t.op
+        add y to Open
+return sols
+
+main():
