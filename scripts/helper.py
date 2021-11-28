@@ -2,6 +2,7 @@ import heapq
 import numpy as np
 from PIL import Image as im
 import copy
+import matplotlib.pyplot as plt
 
 INF = 2**32 - 1
 
@@ -43,7 +44,7 @@ class State:
 class GridProblem:
     def __init__(self, posStart, posGoal, obstacleGrid):
         self.height = obstacleGrid.shape[0]
-        self.width = obstacleGrid.shape[0]
+        self.width = obstacleGrid.shape[1]
         self.grid = np.empty((self.height, self.width), dtype=object)
         self.posStart = posStart
         self.posGoal = posGoal
@@ -100,19 +101,19 @@ class GridProblem:
     
     def heuristicGrid(self, costGrid):
         grid = np.empty((self.height, self.width), dtype=object)
-        unvisited = PriorityQueue()
         for i in range(self.height):
             for j in range(self.width):
                 if self.obstacleGrid[i, j] == 1:
                     grid[i, j] = DijkstraNode((i, j), INF, True)
                 else:
                     grid[i, j] = DijkstraNode((i, j), INF, False)
-                    unvisited.push(grid[i, j])
         
         curNode = grid[self.posGoal]
         curNode.dist = 0
-        unvisited.updateOrder()
-        while not unvisited.empty():
+        open = PriorityQueue()
+        open.push(curNode)
+        while not open.empty():############
+            curNode = open.pop()
             curPos = curNode.pos
             newDist = curNode.dist + costGrid[curPos]
             neighborsPos = self.getNeighborsPos(curPos)
@@ -122,9 +123,8 @@ class GridProblem:
                     continue
                 if newDist < neighbor.dist:
                     neighbor.dist = newDist
+                    open.push(neighbor)
             curNode.visited = True
-            unvisited.updateOrder()
-            curNode = unvisited.pop()
         
         distGrid = np.zeros((self.height, self.width))
         for i in range(self.height):
@@ -193,23 +193,21 @@ def shouldIterate(sols, set):
 def filterOpenMoara(vector, openList):
     removeList = []
     for x in openList:
-        s = x.state
         if dominates(vector, x.fUnweighted):
             removeList.append(x)
-            s.gOp.remove(x)
     for x in removeList:
         openList.remove(x)
+        x.state.gOp.remove(x)
     heapq.heapify(openList)
 
 def filterOpenNamoa(vector, openList):
     removeList = []
     for x in openList:
-        s = x.state
         if dominates(vector, x.f):
             removeList.append(x)
-            s.gOp.remove(x)
     for x in removeList:
         openList.remove(x)
+        x.state.gOp.remove(x)
     heapq.heapify(openList)
 
 def filterGOp(vector, gOp, openList):
@@ -243,10 +241,7 @@ def updateFOpen(openList, epsilon):
 
 def publishPath(path, obstacleGrid):
     grid = copy.deepcopy(obstacleGrid)
-
     grid = -(grid - 1) * 127
-
-    
 
     for pos in path:
         grid[pos] = 255
@@ -254,11 +249,12 @@ def publishPath(path, obstacleGrid):
     image = im.fromarray(grid)
 
     image.show()
-
-    print("")
+    # plt.imshow(grid)
+    # plt.show()
 
 def publishSolutions(sols, obstacleGrid, doPrint):
     paths = []
+    print(str(len(sols)) + " Solutions")
     for sol in sols:
         nTmp = sol
         path = []

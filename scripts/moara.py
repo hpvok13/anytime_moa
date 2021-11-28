@@ -28,13 +28,13 @@ def ImprovePath(problem, sols, open, epsilon):
             t.gOp.add(y)
             open.push(y)
 
-def moara(problem):
+def moara(problem, doPrint):
     sols = []
     open = PriorityQueue()
 
     sStart = problem.getStart()
 
-    epsilon = 5
+    epsilon = 3
 
     nStart = MoaraNode(sStart, np.array([0, 0]), None, epsilon)
 
@@ -46,26 +46,26 @@ def moara(problem):
     duration = timeit.default_timer()-startTime
     
     print("Epsilon " + str(epsilon) + ":")
-    # print("----------------------------------------------------------------")
+    print("----------------------------------------------------------------")
     print(duration)
-    # publishSolutions(sols, problem.obstacleGrid)
+    publishSolutions(sols, problem.obstacleGrid, doPrint)
 
     while(shouldIterate(sols, open.heap)):
-        epsilon -= 0.5
+        epsilon -= 0.05
         if epsilon < 1:
             epsilon = 1
         
         updateFOpen(open.heap, epsilon)
         
-        print("Epsilon " + str(epsilon) + ":")
-        # print("----------------------------------------------------------------")
+        print("\nEpsilon " + str(epsilon) + ":")
+        print("----------------------------------------------------------------")
         
         startTime = timeit.default_timer()
         ImprovePath(problem, sols, open, epsilon)
         duration = timeit.default_timer()-startTime
         
         print(duration)
-        # publishSolutions(sols, problem.obstacleGrid)
+        publishSolutions(sols, problem.obstacleGrid, doPrint)
     
     return sols
 

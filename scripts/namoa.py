@@ -25,7 +25,7 @@ def namoa(problem):
         if s == sGoal:
             sols.append(x)
             filterOpenNamoa(x.g, open.heap)
-            filterSet(x.g, sols)
+            # filterSet(x.g, sols)
             continue
         for t in problem.getSuccessors(s):
             gy = x.g + t.cost

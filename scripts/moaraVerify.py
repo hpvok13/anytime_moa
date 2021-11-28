@@ -4,74 +4,69 @@ from helper import *
 from moara import moara
 from namoa import namoa
 
+
+doPrint = True
+
 def verifyPaths(sols1, sols2):
     if len(sols1) != len(sols2):
         print("Pareto optimal solution sets have different length")
         return False
-    
-    if sols1 != sols2:
-        print("Solution sets do not equal")
-        return False
-        
-    #     for sol2 in sols2:
-    #         for i, row1 in enumerate(sol1):
-    #             if row1 != sol2[i]:
-    #                 break
-    #         else:
-    #             break
-    #     else:
-    #         print("Solutions don't match")
-    #         return False
-    return True
 
-obstacleGridStr = np.genfromtxt("../maps/Berlin_1_256.map", delimiter=1, skip_header=4, dtype=str)
+    for sol2 in sols2:
+        for sol1 in sols1:
+            if np.array_equal(sol1.g, sol2.g):
+                break
+        else:
+            break
+    else:
+        return True
+    print("Solutions don't match")
+    return False
 
-obstacleGrid = np.zeros(obstacleGridStr.shape)
+def main():
+    obstacleGridStr = np.genfromtxt("../maps/Berlin_1_256.map", delimiter=1, skip_header=4, dtype=str)
 
-obstacles = []
-for i in range(obstacleGridStr.shape[0]):
-    for j in range(obstacleGridStr.shape[1]):
-        if obstacleGridStr[i, j] == '@':
-            obstacleGrid[i, j] = 1
-            obstacles.append((i, j))
+    obstacleGrid = np.zeros(obstacleGridStr.shape)
 
-# obstacleGrid = [[0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                     [0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                     [0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                     [0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                     [0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                     [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#                     [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
+    for i in range(obstacleGridStr.shape[0]):
+        for j in range(obstacleGridStr.shape[1]):
+            if obstacleGridStr[i, j] == '@':
+                obstacleGrid[i, j] = 1
 
-# obstacles = []
-# for i, row in enumerate(obstacleGrid):
-#     for j in range(len(row)):
-#         if obstacleGrid[i][j] == 1:
-#             obstacles.append((i, j))
+    # obstacleGrid = np.array([[0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                         [0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                         [0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                         [0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                         [0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                         [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #                         [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
 
-problem = GridProblem((0, 0), (obstacleGrid.shape[0]-1, obstacleGrid.shape[1]-1), obstacleGrid)
+    problem = GridProblem((0, 0), (obstacleGrid.shape[0]-1, obstacleGrid.shape[1]-1), obstacleGrid)
 
 
-print("MOARA*")
-startTime = timeit.default_timer()
-solsMoara = moara(problem)
-duration = timeit.default_timer() - startTime
+    print("MOARA*")
+    startTime = timeit.default_timer()
+    solsMoara = moara(problem, doPrint)
+    duration = timeit.default_timer() - startTime
 
-print("\nTotal")
-print(duration)
+    print("\nTotal")
+    print(duration)
 
-print("\n\nNAMOA*")
-startTime = timeit.default_timer()
-solsNamoa = namoa(problem)
-duration = timeit.default_timer() - startTime
+    print("\n\nNAMOA*")
+    startTime = timeit.default_timer()
+    solsNamoa = namoa(problem)
+    duration = timeit.default_timer() - startTime
 
-print(duration)
+    print(duration)
 
-print("\n\n\nMOARA* solution set:")
-pathsMoara = publishSolutions(solsMoara, obstacleGrid, True)
+    print("\n\n\nMOARA* solution set:")
+    publishSolutions(solsMoara, obstacleGrid, doPrint)
 
-print("\n\nNAMOA* solution set:")
-pathsNamoa = publishSolutions(solsNamoa, obstacleGrid, True)
+    print("\n\nNAMOA* solution set:")
+    publishSolutions(solsNamoa, obstacleGrid, doPrint)
 
+    if verifyPaths(solsMoara, solsNamoa):
+        print("MOARA* solution set matches NAMOA*")
 
-print(verifyPaths(pathsMoara, pathsNamoa))
+if __name__ == '__main__':
+    main()
