@@ -2,47 +2,57 @@ import numpy as np
 from helper import *
 import timeit
 
-def ImprovePath(problem, sols, open, epsilon):
+def ImprovePath(problem, sols, open, incons, epsilon):
     sGoal = problem.getGoal()
     
-    while not shouldTerminate(sols, open.heap):
+    while not open.empty():
         x = open.pop()
         s = x.state
+
+        if setDominates(sols, x.f):
+            s.gOp.remove(x)
+            incons.append(x)
+            continue
+
+        # if s.iter != iter:
+        #     s.iter = iter
+        #     s.gCl = set()
 
         s.gOp.remove(x)
         s.gCl.add(x)
         if s == sGoal:
             sols.append(x)
-            filterOpenMoara(x.g, open.heap)
+            filterOpenArmoa(x.g, open.heap)
             filterSet(x.g, sols)
             continue
         for t in problem.getSuccessors(s):
             gy = x.g + t.cost
-            y = MoaraNode(t, gy, x, epsilon)
-            if setDominates(t.gOp, y.g) or setDominates(t.gCl, y.g) or setDominates(sols, y.fUnweighted):
+            y = ArmoaNode(t, gy, x, epsilon)
+            if setDominates(t.gOp, y.g) or setDominates(t.gCl, y.g) or setDominates(sols, y.fUnweighted):####
                 continue
-
+            
             filterGOp(y.g, t.gOp, open.heap)
             filterSet(y.g, t.gCl)
 
             t.gOp.add(y)
             open.push(y)
 
-def moara(problem, doPrint):
+def armoaIncon(problem, doPrint):
     sols = []
+    incons = []
     open = PriorityQueue()
 
     sStart = problem.getStart()
 
-    epsilon = 3
+    epsilon = 2
 
-    nStart = MoaraNode(sStart, np.array([0, 0]), None, epsilon)
+    nStart = ArmoaNode(sStart, np.array([0, 0]), None, epsilon)
 
     sStart.gOp.add(nStart)
     open.push(nStart)
 
     startTime = timeit.default_timer()
-    ImprovePath(problem, sols, open, epsilon)
+    ImprovePath(problem, sols, open, incons, epsilon)
     duration = timeit.default_timer()-startTime
     
     print("Epsilon " + str(epsilon) + ":")
@@ -50,18 +60,21 @@ def moara(problem, doPrint):
     print(duration)
     publishSolutions(sols, problem.obstacleGrid, doPrint)
 
-    while(shouldIterate(sols, open.heap)):
+    while(shouldIterate(sols, incons)):
         epsilon -= 0.05
         if epsilon < 1:
             epsilon = 1
+
+        open.heap = incons
+        incons = []
         
-        updateFOpen(open.heap, epsilon)
+        updateFOpenIncon(open.heap, epsilon)
         
         print("\nEpsilon " + str(epsilon) + ":")
         print("----------------------------------------------------------------")
         
         startTime = timeit.default_timer()
-        ImprovePath(problem, sols, open, epsilon)
+        ImprovePath(problem, sols, open, incons, epsilon)
         duration = timeit.default_timer()-startTime
         
         print(duration)
@@ -91,7 +104,7 @@ def main():
     
     
     startTime = timeit.default_timer()
-    sols = moara(problem)
+    sols = armoaIncon(problem)
     duration = timeit.default_timer() - startTime
 
     print("\nPareto Optimal Set")

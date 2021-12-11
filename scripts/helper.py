@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 INF = 2**32 - 1
 
-class MoaraNode:
+class ArmoaNode:
     def __init__(self, state, g, parent, epsilon):
         self.state = state
         self.g = g
@@ -42,7 +42,7 @@ class State:
         self.cost = cost
 
 class GridProblem:
-    def __init__(self, posStart, posGoal, obstacleGrid):
+    def __init__(self, posStart, posGoal, obstacleGrid, costGrid1=None, costGrid2=None):
         self.height = obstacleGrid.shape[0]
         self.width = obstacleGrid.shape[1]
         self.grid = np.empty((self.height, self.width), dtype=object)
@@ -52,10 +52,17 @@ class GridProblem:
         for i in range(self.height):
             for j in range(self.width):
                 self.grid[i, j] = State((i, j), None, None)
-        self.costGrid1 = np.random.randint(1, 10, (self.height, self.width))
-        self.costGrid2 = np.random.randint(1, 10, (self.height, self.width))
+
+        if costGrid1 is None or costGrid2 is None:
+            self.costGrid1 = np.random.randint(1, 10, (self.height, self.width))
+            self.costGrid2 = np.random.randint(1, 10, (self.height, self.width))
+        else:
+            self.costGrid1 = costGrid1
+            self.costGrid2 = costGrid2
+        
         self.hGrid1 = self.heuristicGrid(self.costGrid1)
         self.hGrid2 = self.heuristicGrid(self.costGrid2)
+
         for i in range(self.height):
             for j in range(self.width):
                 if obstacleGrid[i, j] == 1:
@@ -112,7 +119,7 @@ class GridProblem:
         curNode.dist = 0
         open = PriorityQueue()
         open.push(curNode)
-        while not open.empty():############
+        while not open.empty():
             curNode = open.pop()
             curPos = curNode.pos
             newDist = curNode.dist + costGrid[curPos]
@@ -184,13 +191,19 @@ def setDominates(set, vector):
             return True
     return False
 
+def setDominated(set, vector):
+    for x in set:
+        if dominates(vector, x.g):
+            return True
+    return False
+
 def shouldIterate(sols, set):
     for x in set:
         if not setDominates(sols, x.fUnweighted):
             return True
     return False
 
-def filterOpenMoara(vector, openList):
+def filterOpenArmoa(vector, openList):
     removeList = []
     for x in openList:
         if dominates(vector, x.fUnweighted):
@@ -239,6 +252,12 @@ def updateFOpen(openList, epsilon):
         x.f = x.g + epsilon*x.state.h
     heapq.heapify(openList)
 
+def updateFOpenIncon(openList, epsilon):
+    for x in openList:
+        x.f = x.g + epsilon*x.state.h
+        x.state.gOp.add(x)
+    heapq.heapify(openList)
+
 def publishPath(path, obstacleGrid):
     grid = copy.deepcopy(obstacleGrid)
     grid = -(grid - 1) * 127
@@ -246,11 +265,10 @@ def publishPath(path, obstacleGrid):
     for pos in path:
         grid[pos] = 255
     
-    image = im.fromarray(grid)
-
-    image.show()
-    # plt.imshow(grid)
-    # plt.show()
+    # image = im.fromarray(grid)
+    # image.show()
+    plt.imshow(grid)
+    plt.show()
 
 def publishSolutions(sols, obstacleGrid, doPrint):
     paths = []
