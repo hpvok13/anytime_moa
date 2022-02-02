@@ -4,10 +4,15 @@ import timeit
 
 def ImprovePath(problem, sols, open, incons, epsilon):
     sGoal = problem.getGoal()
+    stateSet = set()
     
     while not open.empty():
         x = open.pop()
         s = x.state
+
+        if s in stateSet:
+            s = 
+        
 
         if setDominates(sols, x.f):
             s.gOp.remove(x)

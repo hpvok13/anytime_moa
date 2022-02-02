@@ -6,9 +6,31 @@ import matplotlib.pyplot as plt
 
 INF = 2**32 - 1
 
+class CellGrid:
+    def __init__(self, gridSize, obstacleGrid):
+        self.gridHeight = obstacleGrid.shape[0]
+        self.gridWidth = obstacleGrid.shape[1]
+        assert self.gridWidth % 2 == 0, "obstacleGrid width not even"
+        self.height = self.gridHeight*gridSize
+        self.width = self.gridWidth*gridSize
+        self.minX = -self.width/2
+        self.gridSize = gridSize
+        self.obstacleGrid = obstacleGrid
+        self.grid = np.empty((self.gridHeight, self.gridWidth), dtype=object)
+        for i in range(self.height):
+            for j in range(self.width):
+
+                self.grid[i, j] = Cell((x, y), None, None)
+    
+    def __getitem__(self, x, y):
+        i = (y-/self.gridSize 
+        return self.grid[]
+
+
 class ArmoaNode:
-    def __init__(self, state, g, parent, epsilon):
-        self.state = state
+    def __init__(self, cell, thetas, g, parent, epsilon):
+        self.state = thetas
+        self.cell = cell
         self.g = g
         self.f = g + epsilon*state.h
         self.fUnweighted = g + state.h
@@ -21,8 +43,9 @@ class ArmoaNode:
         return dominates(self.f, other.f)
 
 class NamoaNode:
-    def __init__(self, state, g, parent):
+    def __init__(self, state, thetas, g, parent):
         self.state = state
+        self.thetas = thetas
         self.g = g
         self.f = g + state.h
         self.parent = parent
@@ -33,35 +56,34 @@ class NamoaNode:
     def dominates(self, other):
         return dominates(self.f, other.f)
 
-class State:
-    def __init__(self, pos, h, cost):
+class Cell:
+    def __init__(self, pos, h):
         self.pos = pos
+        self.h = h
+
+class State:
+    def __init__(self, thetas, h):
+        self.thetas = thetas
         self.gOp = set()
         self.gCl = set()
         self.h = h
-        self.cost = cost
 
-class GridProblem:
-    def __init__(self, posStart, posGoal, obstacleGrid, costGrid1=None, costGrid2=None):
+class RobotProblem:
+    def __init__(self, cellStart, cellGoal, obstacleGrid, robot, gridSize):
         self.height = obstacleGrid.shape[0]
         self.width = obstacleGrid.shape[1]
-        self.grid = np.empty((self.height, self.width), dtype=object)
-        self.posStart = posStart
-        self.posGoal = posGoal
+        self.gridSize = gridSize
+        self.cellGrid = np.empty((self.height, self.width), dtype=object)
+        self.posStart = cellStart
+        self.posGoal = cellGoal
         self.obstacleGrid = obstacleGrid
+        self.robot = robot
         for i in range(self.height):
             for j in range(self.width):
-                self.grid[i, j] = State((i, j), None, None)
-
-        if costGrid1 is None or costGrid2 is None:
-            self.costGrid1 = np.random.randint(1, 10, (self.height, self.width))
-            self.costGrid2 = np.random.randint(1, 10, (self.height, self.width))
-        else:
-            self.costGrid1 = costGrid1
-            self.costGrid2 = costGrid2
+                self.grid[i, j] = Cell((i, j), None)
         
-        self.hGrid1 = self.heuristicGrid(self.costGrid1)
-        self.hGrid2 = self.heuristicGrid(self.costGrid2)
+        self.distHeuristic = self.calculateDistHeuristic()
+        self.energyHeuristic = self.heuristicGrid(self.costGrid2)
 
         for i in range(self.height):
             for j in range(self.width):
@@ -69,7 +91,6 @@ class GridProblem:
                     continue
                 else:
                     self.grid[i, j].h = np.array((self.hGrid1[i, j], self.hGrid2[i, j]))
-                    self.grid[i, j].cost = np.array((self.costGrid1[i, j], self.costGrid2[i, j]))
     
     def getState(self, pos):
         return self.grid[pos]
@@ -81,17 +102,7 @@ class GridProblem:
         return self.getState(self.posGoal)
     
     def getSuccessors(self, s):
-        successors = []
-        for i in range(s.pos[0] - 1, s.pos[0] + 2):
-            for j in range(s.pos[1] - 1, s.pos[1] + 2):
-                if ((i, j) == s.pos
-                    or i < 0 or i >= self.height
-                    or j < 0 or j >= self.width
-                    or self.obstacleGrid[i, j] == 1):
-                    continue
-                else:
-                    successors.append(self.grid[i, j])
-        return successors
+        self.robot
 
     def getNeighborsPos(self, pos):
         neighbors = []
@@ -106,7 +117,7 @@ class GridProblem:
                     neighbors.append((i, j))
         return neighbors
     
-    def heuristicGrid(self, costGrid):
+    def calculateDistHeuristic(self):
         grid = np.empty((self.height, self.width), dtype=object)
         for i in range(self.height):
             for j in range(self.width):

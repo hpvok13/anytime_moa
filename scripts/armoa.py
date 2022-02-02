@@ -49,6 +49,7 @@ def armoa(problem, doPrint):
     print("----------------------------------------------------------------")
     print(duration)
     publishSolutions(sols, problem.obstacleGrid, doPrint)
+    publishPathCosts(sols)
 
     while(shouldIterate(sols, open.heap)):
         epsilon -= 0.05
@@ -66,6 +67,13 @@ def armoa(problem, doPrint):
         
         print(duration)
         publishSolutions(sols, problem.obstacleGrid, doPrint)
+
+        publishPathCosts(sols)
+    
+    plt.title("Pareto Cost Front")
+    plt.xlabel("C_0(x)")
+    plt.ylabel("C_1(x)")
+    plt.show()
     
     return sols
 

@@ -6,29 +6,7 @@ from namoa import namoa
 from armoa_inconsistent import armoaIncon
 
 
-doPrint = True
-
-def verifyPaths(sols1, sols2):
-    if len(sols1) != len(sols2):
-        print("Pareto optimal solution sets have different length")
-        return False
-
-    for sol2 in sols2:
-        for sol1 in sols1:
-            if np.array_equal(sol1.g, sol2.g):
-                break
-        else:
-            break
-    else:
-        return True
-    print("Solutions don't match")
-    return False
-
-def createCostGrids(height, width, fname1, fname2):
-    costGrid1 = np.random.randint(1, 10, (height, width))
-    costGrid2 = np.random.randint(1, 10, (height, width))
-    np.savetxt(fname1, costGrid1, delimiter=',')
-    np.savetxt(fname2, costGrid2, delimiter=',')
+doPrint = False
 
 def main():
     obstacleGridStr = np.genfromtxt("../maps/maze_32_32_2.map", delimiter=1, skip_header=4, dtype=str)
@@ -53,47 +31,50 @@ def main():
     costGrid1 = None
     costGrid2 = None
 
-    problem = GridProblem((1, 1), (obstacleGrid.shape[0]-1, obstacleGrid.shape[1]-1), obstacleGrid, costGrid1, costGrid2)
+    armoaTimes = []
+    namoaTimes = []
+
+    for _ in range(50):
+        problem = GridProblem((1, 1), (obstacleGrid.shape[0]-1, obstacleGrid.shape[1]-1), obstacleGrid, costGrid1, costGrid2)
 
 
-    print("ARMOA* with Inconsistent Set")
-    startTime = timeit.default_timer()
-    solsArmoaIncon = armoaIncon(problem, doPrint)
-    duration = timeit.default_timer() - startTime
+        print("ARMOA* with Inconsistent Set")
+        startTime = timeit.default_timer()
+        solsArmoaIncon = armoaIncon(problem, doPrint)
+        duration = timeit.default_timer() - startTime
 
-    print("\nTotal")
-    print(duration)
+        print("\nTotal")
+        print(duration)
 
+        armoaTimes.append(duration)
 
-    print("\n\nARMOA*")
-    startTime = timeit.default_timer()
-    solsArmoa = armoa(problem, doPrint)
-    duration = timeit.default_timer() - startTime
+        print("\n\nNAMOA*")
+        startTime = timeit.default_timer()
+        solsNamoa = namoa(problem)
+        duration = timeit.default_timer() - startTime
 
-    print("\nTotal")
-    print(duration)
+        print(duration)
 
-    print("\n\nNAMOA*")
-    startTime = timeit.default_timer()
-    solsNamoa = namoa(problem)
-    duration = timeit.default_timer() - startTime
+        namoaTimes.append(duration)
 
-    print(duration)
+        if not verifyPaths(solsArmoaIncon, solsNamoa):
+            print("Incorrect paths")
+            # print("ARMOA* with Inconsistent Set solution set matches NAMOA*")
+        
+    print("ARMOA* Times:")
+    print(armoaTimes)
+    print("NAMOA* Times:")
+    print(namoaTimes)
 
-    # print("\n\n\nARMOA* solution set:")
-    # publishSolutions(solsArmoa, obstacleGrid, doPrint)
+    print("Avg ARMOA* Times")
+    print(np.mean(armoaTimes))
+    print("Avg NAMOA* Times")
+    print(np.mean(namoaTimes))
+    
 
-    # print("\n\n\nARMOA* solution set:")
-    # publishSolutions(solsArmoa, obstacleGrid, doPrint)
-
-    # print("\n\nNAMOA* solution set:")
-    # publishSolutions(solsNamoa, obstacleGrid, doPrint)
-
-    if verifyPaths(solsArmoaIncon, solsNamoa):
-        print("ARMOA* with Inconsistent Set solution set matches NAMOA*")
-
-    if verifyPaths(solsArmoa, solsNamoa):
-        print("ARMOA* solution set matches NAMOA*")
+def compTimes():
+    namoaTimes = [40.19]
+    armoaTimes = [83.28]
 
 if __name__ == '__main__':
     # grid = np.genfromtxt("../maps/maze_32_32_2.map", delimiter=1, skip_header=4, dtype=str)
