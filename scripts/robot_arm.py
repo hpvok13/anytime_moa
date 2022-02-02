@@ -4,7 +4,7 @@ import math
 import numpy as np
 from sklearn import neighbors
 
-gridSize = 0.25
+cellSize = 0.25
 
 # class Action:
 #     def __init__(self, thetas, jointPos):
