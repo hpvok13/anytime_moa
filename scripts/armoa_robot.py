@@ -1,18 +1,16 @@
 import numpy as np
-from helper import *
+from robot_arm import *
+from helper_robot import *
 import timeit
 
 def ImprovePath(problem, sols, open, incons, epsilon):
-    sGoal = problem.getGoal()
-    stateSet = set()
+    cellGoal = problem.getGoalCell()
+    n = problem.robot.n
     
     while not open.empty():
         x = open.pop()
         s = x.state
-
-        if s in stateSet:
-            s = 
-        
+        c = s.cell
 
         if setDominates(sols, x.f):
             s.gOp.remove(x)
@@ -21,13 +19,14 @@ def ImprovePath(problem, sols, open, incons, epsilon):
 
         s.gOp.remove(x)
         s.gCl.add(x)
-        if s == sGoal:
+        if c == cellGoal:
             sols.append(x)
             filterOpenArmoa(x.g, open.heap) #might be able to remove
             filterSet(x.g, sols)
             continue
         for t in problem.getSuccessors(s):
-            gy = x.g + t.cost
+            distCost = 0.25
+            gy = x.g + np.array([distCost, 0])
             y = ArmoaNode(t, gy, x, epsilon)
             if setDominates(t.gOp, y.g) or setDominates(t.gCl, y.g) or setDominates(sols, y.fUnweighted):####
                 continue
@@ -38,7 +37,7 @@ def ImprovePath(problem, sols, open, incons, epsilon):
             t.gOp.add(y)
             open.push(y)
 
-def armoaIncon(problem, doPrint):
+def armoaRobot(problem, doPrint):
     sols = []
     incons = []
     open = PriorityQueue()
@@ -47,9 +46,9 @@ def armoaIncon(problem, doPrint):
     # numSolsPlot = []
     # compTimePlot = []
 
-    sStart = problem.getStart()
+    sStart = problem.getStartState()
 
-    epsilon = 2
+    epsilon = 10
 
     nStart = ArmoaNode(sStart, np.array([0, 0]), None, epsilon)
 
@@ -64,10 +63,10 @@ def armoaIncon(problem, doPrint):
     # numSolsPlot.append(len(sols))
     # compTimePlot.append(duration)
     
-    # print("Epsilon " + str(epsilon) + ":")
-    # print("----------------------------------------------------------------")
+    print("Epsilon " + str(epsilon) + ":")
+    print("----------------------------------------------------------------")
     # print(duration)
-    # publishSolutions(sols, problem.obstacleGrid, doPrint)
+    publishSolutions(sols, problem, doPrint)
 
     # publishPathCosts(sols)
 
@@ -81,8 +80,8 @@ def armoaIncon(problem, doPrint):
         
         updateFOpenIncon(open.heap, epsilon)
         
-        # print("\nEpsilon " + str(epsilon) + ":")
-        # print("----------------------------------------------------------------")
+        print("\nEpsilon " + str(epsilon) + ":")
+        print("----------------------------------------------------------------")
         
         # startTime = timeit.default_timer()
         ImprovePath(problem, sols, open, incons, epsilon)
@@ -93,7 +92,7 @@ def armoaIncon(problem, doPrint):
         # compTimePlot.append(duration)
         
         # print(duration)
-        # publishSolutions(sols, problem.obstacleGrid, doPrint)
+        publishSolutions(sols, problem, doPrint)
 
         # publishPathCosts(sols)
     
@@ -118,31 +117,20 @@ def armoaIncon(problem, doPrint):
 
   
 def main():
-    obstacleGrid = [[0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
-
-    obstacles = []
-    for i, row in enumerate(obstacleGrid):
-        for j in range(len(row)):
-            if obstacleGrid[i][j] == 1:
-                obstacles.append((i, j))
-
-    problem = GridProblem(len(obstacleGrid), len(obstacleGrid[0]), 
-                         (0, 0), (len(obstacleGrid)-1, len(obstacleGrid[0])-1), 
-                         obstacles, obstacleGrid)
+    obstacleGrid = np.zeros((24, 48))
+    cellSize = 0.25
+    robot = Robot([1,1,1,1,1,1], cellSize)
+    thetas = [math.pi/4,0,0,0,0,0]
+    posGoal = np.array((-3, 2))
     
+    problem = RobotProblem(thetas, posGoal, obstacleGrid, robot, cellSize)
     
-    startTime = timeit.default_timer()
-    sols = armoaIncon(problem)
-    duration = timeit.default_timer() - startTime
+    # startTime = timeit.default_timer()
+    sols = armoaRobot(problem, False)
+    # duration = timeit.default_timer() - startTime
 
-    print("\nPareto Optimal Set")
-    print(duration)
+    # print("\nPareto Optimal Set")
+    # print(duration)
     # print("----------------------------------------------------------------")
     # publishSolutions(sols, problem.obstacleGrid)
 

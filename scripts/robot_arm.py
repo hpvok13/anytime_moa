@@ -4,21 +4,19 @@ import math
 import numpy as np
 from sklearn import neighbors
 
-cellSize = 0.25
-
 # class Action:
 #     def __init__(self, thetas, jointPos):
 #         self.thetas = thetas
 #         self.jointPos = jointPos
 
 class Robot:
-    def __init__(self, linkLengths):
+    def __init__(self, linkLengths, cellSize):
         self.linkLengths = np.array(linkLengths, dtype='float')
         self.n = len(self.linkLengths)
 
-        self.moveAngles = np.zeros((self.n, 1))
+        self.moveAngles = [0.0]*self.n
         for i in range(self.n):
-            self.moveAngles[i] = gridSize/linkLengths[i]
+            self.moveAngles[i] = cellSize/linkLengths[i]
 
     def visualize(self, thetas=None, jointPos=None):
         if thetas != None:
@@ -29,6 +27,24 @@ class Robot:
             lineY = jointPos[i:i+2, 1]
             plt.plot(lineX, lineY)
 
+        bound = sum(self.linkLengths)*1.25
+        plt.axis('scaled')
+        plt.xlim([-bound,bound])
+        plt.ylim([0,bound])
+        plt.show()
+
+    def addToPlot(self, thetas=None, jointPos=None):
+        if thetas != None:
+            jointPos = self.fk(thetas)
+        for i in range(self.n):
+            lineX = jointPos[i:i+2, 0]
+            lineY = jointPos[i:i+2, 1]
+            plt.plot(lineX, lineY)
+
+    def visualizeTrajectory(self, path):
+        plt.figure()
+        for jointPos in path:
+            self.addToPlot(jointPos=jointPos)
         bound = sum(self.linkLengths)*1.25
         plt.axis('scaled')
         plt.xlim([-bound,bound])

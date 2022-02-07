@@ -1,39 +1,18 @@
 import heapq
 import numpy as np
-from PIL import Image as im
+import math
 import copy
 import matplotlib.pyplot as plt
+from robot_arm import *
 
 INF = 2**32 - 1
 
-class CellGrid:
-    def __init__(self, gridSize, obstacleGrid):
-        self.gridHeight = obstacleGrid.shape[0]
-        self.gridWidth = obstacleGrid.shape[1]
-        assert self.gridWidth % 2 == 0, "obstacleGrid width not even"
-        self.height = self.gridHeight*gridSize
-        self.width = self.gridWidth*gridSize
-        self.minX = -self.width/2
-        self.gridSize = gridSize
-        self.obstacleGrid = obstacleGrid
-        self.grid = np.empty((self.gridHeight, self.gridWidth), dtype=object)
-        for i in range(self.height):
-            for j in range(self.width):
-
-                self.grid[i, j] = Cell((x, y), None, None)
-    
-    def __getitem__(self, x, y):
-        i = (y-/self.gridSize 
-        return self.grid[]
-
-
 class ArmoaNode:
-    def __init__(self, cell, thetas, g, parent, epsilon):
-        self.state = thetas
-        self.cell = cell
+    def __init__(self, state, g, parent, epsilon):
+        self.state = state
         self.g = g
-        self.f = g + epsilon*state.h
-        self.fUnweighted = g + state.h
+        self.f = g + epsilon*state.cell.h
+        self.fUnweighted = g + state.cell.h
         self.parent = parent
 
     def __lt__(self, other):
@@ -57,60 +36,120 @@ class NamoaNode:
         return dominates(self.f, other.f)
 
 class Cell:
-    def __init__(self, pos, h):
+    def __init__(self, pos, h, obstacle):
         self.pos = pos
         self.h = h
+        self.obstacle = obstacle
+
+class CellGrid:
+    def __init__(self, cellSize, obstacleGrid):
+        self.gridHeight = obstacleGrid.shape[0]
+        self.gridWidth = obstacleGrid.shape[1]
+        assert self.gridWidth % 2 == 0, "obstacleGrid width not even"
+        self.height = self.gridHeight*cellSize
+        self.width = self.gridWidth*cellSize
+        self.minX = -self.width/2
+        self.cellSize = cellSize
+        self.obstacleGrid = obstacleGrid
+        self.grid = np.empty((self.gridHeight, self.gridWidth), dtype=object)
+        for i in range(self.gridHeight):
+            for j in range(self.gridWidth):
+                obstacle = obstacleGrid[i,j] == 1
+                x = self.minX + j*cellSize
+                y = self.height - (i+1)*cellSize
+                self.grid[i, j] = Cell(np.array((x, y)), None, obstacle)
+    
+    def __getitem__(self, pos, y=None):
+        if y == None:
+            x = pos[0]
+            y = pos[1]
+        else:
+            x = pos
+        i = math.ceil((self.height - y) / self.cellSize)-1
+        j = math.floor((x - self.minX) / self.cellSize)
+        return self.grid[i, j]
+    
+    def idxFromPos(self, pos):
+        return (math.ceil((self.height - pos[1]) / self.cellSize)-1,  math.floor((pos[0] - self.minX) / self.cellSize))
 
 class State:
-    def __init__(self, thetas, h):
+    def __init__(self, jointPos, thetas, cell):
+        self.jointPos = jointPos
         self.thetas = thetas
+        self.cell = cell
         self.gOp = set()
         self.gCl = set()
-        self.h = h
+
+class StateDict:
+    def __init__(self):
+        self.dict = dict()
+
+    def __getitem__(self, thetas):
+        try:
+            return self.dict[tuple(thetas)]
+        except KeyError:
+            return None
+    
+    def add(self, state):
+        self.dict[tuple(state.thetas)] = state
 
 class RobotProblem:
-    def __init__(self, cellStart, cellGoal, obstacleGrid, robot, gridSize):
-        self.height = obstacleGrid.shape[0]
-        self.width = obstacleGrid.shape[1]
-        self.gridSize = gridSize
-        self.cellGrid = np.empty((self.height, self.width), dtype=object)
-        self.posStart = cellStart
-        self.posGoal = cellGoal
+    def __init__(self, thetas, posGoal, obstacleGrid, robot, cellSize):
+        self.gridHeight = obstacleGrid.shape[0]
+        self.gridWidth = obstacleGrid.shape[1]
+        self.gridSize = cellSize
+        self.posGoal = posGoal
         self.obstacleGrid = obstacleGrid
         self.robot = robot
-        for i in range(self.height):
-            for j in range(self.width):
-                self.grid[i, j] = Cell((i, j), None)
+        self.cellSize = cellSize
+        self.cellGrid = CellGrid(cellSize, obstacleGrid)
+        self.stateDict = StateDict()
+
+        jointPos = robot.fk(thetas)
+        cellStart = self.cellGrid[jointPos[self.robot.n,:]]
+        self.sStart = State(jointPos, thetas, cellStart)
+        self.stateDict.add(self.sStart)
         
         self.distHeuristic = self.calculateDistHeuristic()
-        self.energyHeuristic = self.heuristicGrid(self.costGrid2)
+        #self.energyHeuristic = self.calculateEnergyHeuristic()
 
-        for i in range(self.height):
-            for j in range(self.width):
+        for i in range(self.gridHeight):
+            for j in range(self.gridWidth):
                 if obstacleGrid[i, j] == 1:
                     continue
                 else:
-                    self.grid[i, j].h = np.array((self.hGrid1[i, j], self.hGrid2[i, j]))
-    
-    def getState(self, pos):
-        return self.grid[pos]
-    
-    def getStart(self):
-        return self.getState(self.posStart)
+                    self.cellGrid.grid[i, j].h = np.array((self.distHeuristic[i, j], 0))
 
-    def getGoal(self):
-        return self.getState(self.posGoal)
+    def getCell(self, pos):
+        return self.cellGrid[pos]
+    
+    def getStartState(self):
+        return self.sStart
+
+    def getGoalCell(self):
+        return self.getCell(self.posGoal)
     
     def getSuccessors(self, s):
-        self.robot
+        neighbors = self.robot.getNeighbors(s.thetas)
+        successors = []
+        for thetas, jointPos in neighbors:
+            t = self.stateDict[thetas]
+            if t == None:
+                cell = self.cellGrid[jointPos[self.robot.n,:]]
+                if cell.obstacle:
+                    continue
+                t = State(jointPos, thetas, cell)
+                self.stateDict.add(t)
+            successors.append(t)
+        return successors
 
     def getNeighborsPos(self, pos):
         neighbors = []
         for i in range(pos[0] - 1, pos[0] + 2):
             for j in range(pos[1] - 1, pos[1] + 2):
                 if ((i, j) == pos
-                    or i < 0 or i >= self.height
-                    or j < 0 or j >= self.width
+                    or i < 0 or i >= self.gridHeight
+                    or j < 0 or j >= self.gridWidth
                     or self.obstacleGrid[i, j] == 1):
                     continue
                 else:
@@ -118,35 +157,40 @@ class RobotProblem:
         return neighbors
     
     def calculateDistHeuristic(self):
-        grid = np.empty((self.height, self.width), dtype=object)
-        for i in range(self.height):
-            for j in range(self.width):
+        grid = np.empty((self.gridHeight, self.gridWidth), dtype=object)
+        for i in range(self.gridHeight):
+            for j in range(self.gridWidth):
                 if self.obstacleGrid[i, j] == 1:
                     grid[i, j] = DijkstraNode((i, j), INF, True)
                 else:
                     grid[i, j] = DijkstraNode((i, j), INF, False)
         
-        curNode = grid[self.posGoal]
+        curNode = grid[self.cellGrid.idxFromPos(self.posGoal)]
         curNode.dist = 0
         open = PriorityQueue()
         open.push(curNode)
         while not open.empty():
             curNode = open.pop()
             curPos = curNode.pos
-            newDist = curNode.dist + costGrid[curPos]
             neighborsPos = self.getNeighborsPos(curPos)
             for neighborPos in neighborsPos:
                 neighbor = grid[neighborPos]
                 if neighbor.visited:
                     continue
+
+                if abs(neighborPos[0] - curPos[0]) + abs(neighborPos[1] - curPos[1]) > 1:
+                    newDist = curNode.dist + self.cellSize*math.sqrt(2)
+                else:
+                    newDist = curNode.dist + self.cellSize
+
                 if newDist < neighbor.dist:
                     neighbor.dist = newDist
                     open.push(neighbor)
             curNode.visited = True
         
-        distGrid = np.zeros((self.height, self.width))
-        for i in range(self.height):
-            for j in range(self.width):
+        distGrid = np.zeros((self.gridHeight, self.gridWidth))
+        for i in range(self.gridHeight):
+            for j in range(self.gridWidth):
                 distGrid[i, j] = grid[i, j].dist
 
         return distGrid
@@ -260,45 +304,27 @@ def shouldTerminate(sols, openList):
 
 def updateFOpen(openList, epsilon):
     for x in openList:
-        x.f = x.g + epsilon*x.state.h
+        x.f = x.g + epsilon*x.state.cell.h
     heapq.heapify(openList)
 
 def updateFOpenIncon(openList, epsilon):
     for x in openList:
-        x.f = x.g + epsilon*x.state.h
+        x.f = x.g + epsilon*x.state.cell.h
         x.state.gOp.add(x)
     heapq.heapify(openList)
 
-def createCostGrids(height, width, fname1, fname2):
-    costGrid1 = np.random.randint(1, 10, (height, width))
-    costGrid2 = np.random.randint(1, 10, (height, width))
-    np.savetxt(fname1, costGrid1, delimiter=',')
-    np.savetxt(fname2, costGrid2, delimiter=',')
-
-def publishPath(path, obstacleGrid):
-    grid = copy.deepcopy(obstacleGrid)
-    grid = -(grid - 1) * 127
-
-    for pos in path:
-        grid[pos] = 255
-    
-    # image = im.fromarray(grid)
-    # image.show()
-    plt.imshow(grid)
-    plt.show()
-
-def publishSolutions(sols, obstacleGrid, doPrint):
+def publishSolutions(sols, problem, doPrint):
     paths = []
     print(str(len(sols)) + " Solutions")
     for sol in sols:
         nTmp = sol
         path = []
         while nTmp != None:
-            path.append(nTmp.state.pos)
+            path.append(nTmp.state.jointPos)
             nTmp = nTmp.parent
         path.reverse()
         if doPrint:
-            publishPath(path, obstacleGrid)
+            problem.robot.visualizeTrajectory(path)
         paths.append(path)
     return paths
 
