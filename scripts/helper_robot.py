@@ -115,10 +115,7 @@ class RobotProblem:
 
         for i in range(self.gridHeight):
             for j in range(self.gridWidth):
-                if obstacleGrid[i, j] == 1:
-                    continue
-                else:
-                    self.cellGrid.grid[i, j].h = np.array((self.distHeuristic[i, j], 0))
+                self.cellGrid.grid[i, j].h = np.array((self.distHeuristic[i, j], 0))
 
     def getCell(self, pos):
         return self.cellGrid[pos]
@@ -130,7 +127,7 @@ class RobotProblem:
         return self.getCell(self.posGoal)
     
     def getSuccessors(self, s):
-        neighbors = self.robot.getNeighbors(s.thetas)
+        neighbors = self.robot.getNeighbors(s.thetas, self)
         successors = []
         for thetas, jointPos in neighbors:
             t = self.stateDict[thetas]
@@ -155,6 +152,39 @@ class RobotProblem:
                 else:
                     neighbors.append((i, j))
         return neighbors
+
+    def calculateSafetyHeuristic(self):
+        grid = np.ones((self.gridHeight, self.gridWidth), dtype=float)*INF
+
+        for i in range(self.gridHeight):
+            for j in range(self.gridWidth):
+                open = []
+                open.append(np.array((i,j)))
+                while len(open) > 0:
+                    curNode = open.pop(0)
+                    curPos = curNode.pos
+                    neighborsPos = self.getNeighborsPos(curPos)
+                    for neighborPos in neighborsPos:
+                        neighbor = grid[neighborPos]
+                        if neighbor.visited:
+                            continue
+
+                        if abs(neighborPos[0] - curPos[0]) + abs(neighborPos[1] - curPos[1]) > 1:
+                            newDist = curNode.dist + self.cellSize*math.sqrt(2)
+                        else:
+                            newDist = curNode.dist + self.cellSize
+
+                        if newDist < neighbor.dist:
+                            neighbor.dist = newDist
+                            open.push(neighbor)
+                    curNode.visited = True
+        
+        distGrid = np.zeros((self.gridHeight, self.gridWidth))
+        for i in range(self.gridHeight):
+            for j in range(self.gridWidth):
+                distGrid[i, j] = grid[i, j].dist
+
+        return distGrid
     
     def calculateDistHeuristic(self):
         grid = np.empty((self.gridHeight, self.gridWidth), dtype=object)
@@ -324,7 +354,7 @@ def publishSolutions(sols, problem, doPrint):
             nTmp = nTmp.parent
         path.reverse()
         if doPrint:
-            problem.robot.visualizeTrajectory(path)
+            problem.robot.visualizeTrajectory(path, problem)
         paths.append(path)
     return paths
 

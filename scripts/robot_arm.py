@@ -1,3 +1,4 @@
+from ntpath import join
 from os import link
 import matplotlib.pyplot as plt
 import math
@@ -41,10 +42,26 @@ class Robot:
             lineY = jointPos[i:i+2, 1]
             plt.plot(lineX, lineY)
 
-    def visualizeTrajectory(self, path):
+    def visualizeTrajectory(self, path, problem):
         plt.figure()
-        for jointPos in path:
-            self.addToPlot(jointPos=jointPos)
+        ct = 0
+
+        goalCell = plt.Rectangle(problem.getGoalCell().pos, -problem.cellSize, problem.cellSize, fc='red')
+        plt.gca().add_patch(goalCell)
+
+        for i, jointPos in enumerate(path):
+            if i == len(path)-1:
+                self.addToPlot(jointPos=jointPos)
+            elif ct == 3:
+                ct = 0
+                self.addToPlot(jointPos=jointPos)
+            ct += 1
+
+        for i in range(problem.cellGrid.gridHeight):
+            for j in range(problem.cellGrid.gridWidth):
+                if problem.cellGrid.grid[i,j].obstacle:
+                    rectangle = plt.Rectangle(problem.cellGrid.grid[i,j].pos, -problem.cellSize, problem.cellSize, fc='black')
+                    plt.gca().add_patch(rectangle)
         bound = sum(self.linkLengths)*1.25
         plt.axis('scaled')
         plt.xlim([-bound,bound])
@@ -61,7 +78,16 @@ class Robot:
             jointPos[i+1,1] = jointPos[i,1] + ll*math.sin(cumTheta)
         return jointPos
 
-    def getNeighbors(self, thetas):
+    def validJoint(self, jointPos, problem):
+        for i in range(jointPos.shape[0]):
+            if i == 0:
+                continue
+            if (jointPos[i, 1] <= 0 or
+                problem.getCell(jointPos[i,:]).obstacle):
+                return False
+        return True
+
+    def getNeighbors(self, thetas, problem):
         neighbors = []
         for i in range(self.n):
             thetasTmp = thetas.copy()
@@ -70,7 +96,8 @@ class Robot:
             if i+1 < self.n:
                 thetasTmp[i+1] -= moveAngle
             jointPos = self.fk(thetasTmp)
-            neighbors.append((thetasTmp, jointPos))
+            if self.validJoint(jointPos, problem):
+                neighbors.append((thetasTmp, jointPos))
 
             thetasTmp = thetas.copy()
             moveAngle = self.moveAngles[i]
@@ -78,7 +105,8 @@ class Robot:
             if i+1 < self.n:
                 thetasTmp[i+1] += moveAngle
             jointPos = self.fk(thetasTmp)
-            neighbors.append((thetasTmp, jointPos))
+            if self.validJoint(jointPos, problem):
+                neighbors.append((thetasTmp, jointPos))
         return neighbors
 
 def test():
