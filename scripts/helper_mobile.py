@@ -559,17 +559,19 @@ def updateFOpenIncon(openList, epsilon):
 
 def publishSolutions(sols, problem):
     paths = []
-    fig, ax = plt.subplot()
     print(str(len(sols)) + " Solutions")
     for sol in sols:
+        _, ax = plt.subplots()
         nTmp = sol
         path = []
         while nTmp != None:
             pose = nTmp.state.pose
             x = pose[0]
             y = pose[1]
+            dx = math.cos(pose[2])*0.1
+            dy = math.sin(pose[2])*0.1
             path.append(nTmp.state.pose)
-            plt.arrow()
+            ax.arrow(x, y, dx, dy)
             nTmp = nTmp.parent
         path.reverse()
         paths.append(path)
